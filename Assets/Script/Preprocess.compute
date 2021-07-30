@@ -1,0 +1,23 @@
+#pragma kernel Preprocess
+
+#define WIDTH 28
+
+sampler2D Input;
+RWStructuredBuffer<float> Output;
+
+[numthreads(4, 4, 1)]
+void Preprocess(uint2 id : SV_DispatchThreadID)
+{
+    // UV (vertically flipped)
+    float2 uv = float2(0.5 + id.x, WIDTH - 0.5 - id.y) / WIDTH;
+
+    // UV gradients
+    float2 duv_dx = float2(1.0 / WIDTH, 0);
+    float2 duv_dy = float2(0, -1.0 / WIDTH);
+
+    // Texture sample
+    float gs = tex2Dgrad(Input, uv, duv_dx, duv_dy).g;
+
+    // Tensor element output
+    Output[id.y * WIDTH + id.x] = gs;
+}
