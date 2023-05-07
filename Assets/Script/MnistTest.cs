@@ -31,18 +31,14 @@ sealed class MnistTest : MonoBehaviour
 
         worker.Execute(input);
 
-        // Retrieve the results into a temporary render texture.
-        var rt = RenderTexture.GetTemporary(10, 1, 0, RenderTextureFormat.RFloat);
-        using (var tensor = worker.PeekOutput().Reshape(new TensorShape(1, 1, 10, 1)))
-            tensor.ToRenderTexture(rt);
+        // Get access to the tensor data on the GPU.
+        var output = worker.PeekOutput().tensorOnDevice as ComputeTensorData;
 
         // Invoke the postprocessing compute kernel.
         _scores = new ComputeBuffer(10, sizeof(float));
-        _postprocess.SetTexture(0, "Input", rt);
+        _postprocess.SetBuffer(0, "Input", output.buffer);
         _postprocess.SetBuffer(0, "Output", _scores);
         _postprocess.Dispatch(0, 1, 1, 1);
-
-        RenderTexture.ReleaseTemporary(rt);
 
         // Output display
         _previewRenderer.material.mainTexture = _sourceImage;
