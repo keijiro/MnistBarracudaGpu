@@ -14,16 +14,22 @@ sealed class MnistTest : MonoBehaviour
 
     void Start()
     {
+        // Prepare the input tensor buffer.
+        var shape = new TensorShape(1, 28, 28, 1);
+        var data = new ComputeTensorData
+          (shape, "Input", ComputeInfo.ChannelsOrder.NHWC);
+        using var input = new Tensor(shape, data);
+
         // Invoke the preprocessing compute kernel.
-        using var buffer = new ComputeBuffer(28 * 28, sizeof(float));
         _preprocess.SetTexture(0, "Input", _sourceImage);
-        _preprocess.SetBuffer(0, "Output", buffer);
+        _preprocess.SetBuffer(0, "Output", data.buffer);
         _preprocess.Dispatch(0, 28 / 4, 28 / 4, 1);
 
         // Run the MNIST model.
-        using var worker = ModelLoader.Load(_model).CreateWorker();
-        using (var input = new Tensor(1, 28, 28, 1, buffer))
-            worker.Execute(input);
+        using var worker =
+          ModelLoader.Load(_model).CreateWorker(WorkerFactory.Device.GPU);
+
+        worker.Execute(input);
 
         // Retrieve the results into a temporary render texture.
         var rt = RenderTexture.GetTemporary(10, 1, 0, RenderTextureFormat.RFloat);
